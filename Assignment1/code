@@ -1,0 +1,333 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+
+//Question 1
+
+//function definition
+
+bool word_diff(std::string word1, std::string word2)
+{
+    // return whether these two words are the same
+    return bool(word1 == word2);
+}
+
+
+//Question 2
+
+bool classical_file_diff(std::string file1, std::string file2)
+{
+    // define variables for later use
+    std::string t1;
+    std::string t2;
+    std::string text1;
+    std::string text2;
+
+    //open the file
+    std::ifstream f1;
+    std::ifstream f2;    
+    f1.open(file1);
+    f2.open(file2);
+
+    // convert the multiple-line text to a one-line string
+    while(getline(f1, text1))
+    {
+        t1 += text1;
+        /* add a mark at the end of the sentence to distinguish lines, which is to avoid the case that two text have
+        the same number of lines and same words, but they pick up the lines in different positions*/
+        t1 += std::string(" EndLine ");
+    }
+    while(getline(f2,text2))
+    {
+        t2 += text2;
+        t2 += std::string(" EndLine ");
+    }
+    
+    // close the file
+    f1.close();
+    f1.close();
+
+    // compare the string word by word
+    return word_diff(t1, t2);
+}
+
+
+//Question 3
+
+std::size_t hash_it (std::string somestring)
+{
+    // return the hash value of the string
+    return std::hash<std::string>{}(somestring);
+}
+
+//Question 4
+
+bool enhanced_file_diff(std::string file1, std::string file2)
+{
+    //open the file
+    std::ifstream f1;
+    std::ifstream f2;
+    f1.open(file1);
+    f2.open(file2);
+    
+    // convert the file contents into strings, so we can use the function since the input needs to be string type
+    std::stringstream t1;
+    t1 << f1.rdbuf();
+    std::string t1_contents = t1.str();
+    std::stringstream t2;
+    t2 << f2.rdbuf();
+    std::string t2_contents = t2.str();
+    
+    // hash the string using the function before
+    std::size_t text1 = hash_it(t1_contents);
+    std::size_t text2 = hash_it(t2_contents);
+
+    // close the file
+    f1.close();
+    f1.close();
+    
+    // return the result of comparason
+    return bool(text1 == text2);
+}
+
+// Question 5
+
+// define a recursive helper function
+std::vector<int> mismatched(std::vector<std::size_t> h1, std::vector<std::size_t> h2, std::vector<int> mis, int n)
+{
+    // loop through every single line of the file, since the number of lines may be different, so we use max()
+    while (n < std::max(h1.size(), h2.size()))
+    {
+        // check whether this two specific line are identical
+        if (h1[n] != h2[n])
+        {
+            // if this two lines are different, append the line number to the vector
+            mis.push_back(n);
+        }
+        // increase n and call the function again, to check other lines until we loop through all lines
+        return mismatched(h1, h2, mis, n+1);
+    }
+    // return the vector that contains the index of the different lines
+    return mis;
+}
+
+void list_mismatch(std::string file1, std::string file2)
+{
+    // define variables that we will use later
+    std::vector<std::string> t1;
+    std::vector<std::string> t2;
+    std::vector<std::size_t> h1;
+    std::vector<std::size_t> h2;
+    std::vector<int> mis;
+    std::string text1;
+    std::string text2;
+
+    // open the file
+    std::ifstream f1;
+    std::ifstream f2;    
+    f1.open(file1);
+    f2.open(file2);
+
+    // store the file in a vector line by line
+    while(getline(f1, text1))
+    {
+        t1.push_back(text1);
+        h1.push_back(hash_it(text1));
+    }
+    while(getline(f2,text2))
+    {
+        t2.push_back(text2);
+        h2.push_back(hash_it(text2));
+    }
+
+    // get the indices of mismatch lines using the helper function
+    std::vector<int> misline = mismatched(h1, h2, mis, 0);
+
+    // print out the mismatch lines
+    for (int i = 0; i < misline.size(); i++)
+    {
+        // get the index of the line
+        int n = misline[i];
+
+        // check whether the index is out of one of the file's range, since two files can have different number of lines
+        // if the index is out of the range, I print "there's no line in the text"
+        // if the index is not out of range, I print the lines of both file that are mismatched
+        if (n >= t1.size())
+        {
+            std::cout<<"file1.txt: (there's no line in the text)"<<"\n";
+            std::cout<<"file2.txt: "<<t2[n]<<"\n\n";
+        }
+        else if (n >= t2.size())
+        {
+            std::cout<<"file1.txt: "<<t1[n]<<"\n";
+            std::cout<<"file2.txt: (there's no line in the text)"<<"\n\n";
+        }
+        else
+        {
+            std::cout<<"file1.txt: "<<t1[n]<<"\n";
+            std::cout<<"file2.txt: "<<t2[n]<<"\n\n";
+        }
+    }
+    // close the file
+    f1.close();
+    f2.close();
+}
+
+// Question 6
+
+// define a reursive helper function
+void misword(std::vector<std::string> text1line, std::vector<std::string> text2line, std::vector<std::size_t>text1hash, std::vector<std::size_t> text2hash, int linenum, int n)
+{
+    // check the condition to make sure the helper function can go through every word in the text
+    // since two lines can have different number of words, so we use max()
+    while (n < std::max(text1hash.size(), text2hash.size()))
+    {
+        //check if n is bigger than the total number of words of one line, and react to each of the situation
+        if (n >= text1hash.size())
+        {
+            std::cout<<"file1.txt: "<<"(line "<<linenum<<")"<<"\n";
+            std::cout<<"file2.txt: "<<text2line[n]<<" (line "<<linenum<<")"<<"\n\n";
+        }
+        else if (n >= text2hash.size())
+        {
+            std::cout<<"file1.txt: "<<text1line[n]<<" (line "<<linenum<<")"<<"\n";
+            std::cout<<"file2.txt: "<<"(line "<<linenum<<")"<<"\n\n";
+        }
+        else if (text1hash[n] != text2hash[n])
+        {
+            std::cout<<"file1.txt: "<<text1line[n]<<" (line "<<linenum<<")"<<"\n";
+            std::cout<<"file2.txt: "<<text2line[n]<<" (line "<<linenum<<")"<<"\n\n";
+        }
+        // call the function again to make sure to go through every single word of the line
+        return misword(text1line, text2line, text1hash, text2hash, linenum, n+1);
+    }
+}
+
+
+void list_mismatched_words(std::string file1, std::string file2)
+{
+    // define variables that we need later
+    std::vector<std::string> t1;
+    std::vector<std::string> t2;
+    std::vector<std::size_t> h1;
+    std::vector<std::size_t> h2;
+    std::vector<int> mis;
+    std::string text1;
+    std::string text2;
+
+    // open the file
+    std::ifstream f1;
+    std::ifstream f2;    
+    f1.open(file1);
+    f2.open(file2);
+
+    // store the file in a vector line by line, both the content and its hash value
+    while(getline(f1, text1))
+    {
+        t1.push_back(text1);
+        h1.push_back(hash_it(text1));
+    }
+    while(getline(f2,text2))
+    {
+        t2.push_back(text2);
+        h2.push_back(hash_it(text2));
+    }
+
+    // get the indices of the mismatch lines
+    std::vector<int> misline = mismatched(h1, h2, mis, 0);
+
+    // print out the mismatch lines
+    for (int i = 0; i < misline.size(); i++)
+    {
+        std::vector<std::string> text1line;
+        std::vector<std::string> text2line;
+        std::vector<std::size_t> text1hash;
+        std::vector<std::size_t> text2hash;
+
+        // get the index of the line
+        int linenum = misline[i];
+
+        // convert the string to stringstream type, so we can use getline to split the words
+        std::stringstream line1;
+        std::stringstream line2;
+        
+        // check whether the linenum is out of range
+        if (linenum >= t2.size())
+        {
+            line1 << (t1[linenum]);
+
+        }
+        else if(linenum >= t1.size())
+        {
+            
+            line2 << (t2[linenum]);
+        }
+        else
+        {
+            line1 << (t1[linenum]);
+            line2 << (t2[linenum]);
+
+        }
+
+        // split the mismatched line into individual words
+        while(getline(line1, text1,' '))
+        {
+            text1line.push_back(text1);
+            text1hash.push_back(hash_it(text1));
+        }
+        while(getline(line2,text2,' '))
+        {
+            text2line.push_back(text2);
+            text2hash.push_back(hash_it(text2));
+        }
+        // call the recursive helper function to get the specific difference in the line
+        misword(text1line, text2line, text1hash, text2hash, linenum, 0);
+    }
+
+    //close the file
+    f1.close();
+    f2.close();
+}
+
+
+int main()
+{
+    //Q1
+    std::string str1 = "Hello World";
+    std::string str2 = "hEllo World";
+    std::string str3 = "World";
+    std::string str4 = "Hello World";
+    bool result = word_diff(str1, str2); //False
+    bool result = word_diff(str1, str3); //False
+    bool result = word_diff(str1, str4); //Ttue
+
+    //Q2
+    std::string file1 = "./txt_folder/file1.txt";
+    std::string file2 = "./txt_folder/file2.txt";
+    bool result = classical_file_diff(file1, file2); //False
+    list_mismatched_words(file1, file2);
+
+    //Q3
+    std::string mystr = "I love this assignment";
+    std::size_t h1 = hash_it(mystr);
+    std::cout<< h1 <<std::endl;
+
+    //Q4
+    bool result = enhanced_file_diff(file1,file2); //False
+
+    //Q5
+    list_mismatch(file1,file2);
+
+    //Q6
+    list_mismatched_words(file1,file2);
+
+    if (result == true)
+    {
+        std::cout<<"True"<<std::endl;
+    }
+    else
+    {
+        std::cout<<"False"<<std::endl;
+    }
+}
