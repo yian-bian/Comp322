@@ -1,0 +1,393 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+//define a class of Node which has attribute of version number; content; hash value of the content; and the pointer to the next node
+class Node{
+    public:
+    int version;
+    size_t hash_value;
+    std::string con;
+    Node* next;
+};
+
+//define global variables(a linked list, and te file path)
+Node* head = NULL;
+std::string file = "./file.txt";
+//define a function to get the version numbers of a linked list
+std::vector<int> getversion(Node *head){
+    //define a pointer to the head node
+    Node *v = head;
+    // define a vector of int to store the version number in the linked list
+    std::vector<int> total;
+    while(v != NULL){
+        // add the version number to the vector
+        total.push_back(v->version);
+        // pass on to the next node of the linked list
+        v = v->next;
+    };
+    return total;
+};
+
+//define a function to count the number of nodes of a linkes list
+int Count(Node* head){
+    int count = 0;
+    //get a pointer of the head
+    Node* current = head;
+    while(current != NULL){
+        //loop through each node, the number increase 1
+        count++;
+        // pass on to the next node
+        current = current->next;
+    }
+    return count;
+}
+
+void add(string content){
+    int same = 0;
+    // get the hash value of the content that we want to add
+    size_t cur_hash = std::hash<std::string>{}(content);
+
+    // check whether this is the first content that been added
+    if (head == NULL){
+        // if this is the first content, let head be a new Node, and update corresponding attribute
+        head = new Node();
+        head->version = 1;
+        head->con = content;
+        head->hash_value = cur_hash;
+        head->next = NULL;
+        std::cout <<"Your content has been added successfully."<<endl;
+    }
+    // if this is not the first content
+    else {
+        // first we need to find the last node, whose next is NULL
+        Node *cur = head;
+        //loop through all the node to see if the content is the same with previous content
+        while(cur!= NULL) {
+            if(cur->hash_value == cur_hash){
+                same++;
+            };
+            //if current node is the last node, break the loop to let cur be the last node
+            if(cur->next == NULL){
+                break;
+            }
+            else{
+                cur =cur->next;
+            };
+        };
+        // after finding the last node, we scratch its version number
+        int last_version = cur->version;
+
+        // check whether the content has changed, since we will only add content that is different from the previous content
+        switch(same){
+            case 0:{
+                Node *newNode = new Node();
+                cur->next = newNode;
+                newNode->version = last_version+1;
+                newNode->con = content;
+                newNode->hash_value = cur_hash;
+                newNode->next = NULL;
+                std::cout <<"Your content has been added successfully."<<endl;
+                break;
+            };
+            default:{
+                std::cout << "git322 didn't detect any change to your file and will not create a new version"<<endl;
+                break;
+            };
+        };
+    };
+};
+
+void print(void){
+    // create a pointer pointing to the head
+    Node* node = head;
+    //get the total number of the nodes
+    int num = Count(head);
+    //loop through each node and print the corresponding information
+    if (node == NULL){
+        std::cout<<"Number of versions: 0";
+    };
+    while(node != NULL){
+        std::cout <<"Number of versions: "<<num<<"\n";
+        std::cout <<"Version number: "<<node->version<<"\n";
+        std::cout <<"Hash value: "<<node->hash_value<<"\n";
+        std::cout <<"Content: "<<node->con<<"\n"<<endl;
+        node = node->next;
+    };
+};
+
+void load(int version){
+    //get a vector that contains the version number of all node, since we may delete some nodes using remove function
+    std::vector<int> v = getversion(head);
+    //check whether the number that user entered is in the vector
+    vector<int>::iterator check = find(v.begin(), v.end(), version);
+    // if number is out of range or the version has been delete
+    if (check == v.end()){
+        std::cout <<"Please enter a valid version number. If you are not sure please press 'p' to list all valid version numbers.\n";
+    }
+    // if the number is valid
+    else{
+        // we create a pointer pointing to the head
+        Node *N = head;
+        while(N != NULL){
+            // loop through the node to find the version number that the user want to load
+            if (N->version == version){
+                // as we find the node that has the version number equal to which the user entered
+                // we open the file and rewrite the file with the content of that file,
+                // then close the file and break the loop
+                std::fstream specificf;
+                specificf.open(file, ios::out | ios::trunc);
+                specificf<<N->con<<endl;
+                std::cout<< "Version "<<version<<" loaded successfully. Please refresh your text editor ro see the changes.\n";
+                specificf.close();
+                break;
+            };
+            // if we haven't find the version, then pass on to the next node
+            N = N->next;
+        };
+    };
+};
+
+void compare(int version1, int version2){
+    // define the variable that we will need to use later
+    std::vector<std::string> c1;
+    std::vector<std::string> c2;
+    std::string con1;
+    std::string con2;
+    std::string t1;
+    std::string t2;
+    Node *n = head;
+    
+    // loop through all the node to find the version that the user want to compare
+    while(n != NULL){
+        //after finding the versions, store the content separately
+        if (n->version == version1){
+            con1 = n->con;
+        };
+        if (n->version == version2){
+            con2 = n->con;
+        };
+        // if we haven't found the version in this node, we pass on to the next node
+        n = n->next;
+    };
+    //convert the string content of each version to stringstream type, so that we can use getline to get each line
+    stringstream content1(con1); 
+    stringstream content2(con2); 
+
+    //use getline function to split the content line by line and store the lines in vectors
+    while(getline(content1, t1)){
+        c1.push_back(t1);
+    };
+    while(getline(content2, t2)){
+        c2.push_back(t2);
+    };
+
+    //get the maximum number of lines of two content
+    int length = std::max(c1.size(), c2.size());
+
+    //loop through each line to see if they are the same
+    for(int i = 0; i < length; i++){
+        //second version has less line than the first version
+        if (i >= c1.size()){
+            std::cout <<"Line "<<(i+1)<<": <Empty line > <<>> "<<c2[i]<<"\n";
+        }
+        // first version has less line than the second version
+        else if(i >= c2.size()){
+            std::cout <<"Line "<<(i+1)<<": "<<c1[i]<<" <<>> <Empty line>\n";
+        }
+        //both versions have the same number of lines
+        else{
+            //compare the hash value of the line to see if they are the same
+            if(std::hash<std::string>{}(c1[i]) == std::hash<std::string>{}(c2[i])){
+                std::cout <<"Line "<<(i+1)<<": <Identical>\n";
+            }
+            else{
+                std::cout <<"Line "<<(i+1)<<": "<<c1[i]<<" <<>> "<<c2[i]<<"\n";
+            };
+        };
+    };
+}
+
+void search(string keyword){
+    //define the variables that we need to use later
+    std::vector<std::string> content;
+    std::vector<size_t> hash;
+    std::vector<int> version;
+    int found = 0;
+    Node *s = head;
+
+    // loop through each node
+    while(s != NULL){
+        //store the content of node s in c
+        std::string c = s->con;
+        // check if the content has the keyword
+        if (c.find(keyword) != std::string::npos) {
+            // if the content has the keyword, store its content, version number, and hash value
+            content.push_back(s->con);
+            hash.push_back(s->hash_value);
+            version.push_back(s->version);
+            found++;
+        };
+        //pass on to next node
+        s = s->next;
+    };
+    // check if we found the keyword after loop through all the nodes
+    switch (found)
+    {
+    //if found is 0, which means all contents don't contain the keywords
+    case 0:
+        std::cout <<"Your keyword '"<<keyword<<"' was not found in any version\n";
+        break;
+    //if found is not 0, we print the the version number, hash value, and the content of the version that contains the keyword
+    default:
+        std::cout <<"the keyword '"<<keyword<<"' has been found in the following versions:\n";
+        for (int i = 0; i < found; i++){
+            std::cout <<"Version number: "<<version[i]<<"\n";
+            std::cout <<"Hash value: "<<hash[i]<<"\n";
+            std::cout <<"Content: "<<content[i]<<"\n";
+        };
+        break;
+    };
+};
+
+void remove(int version){
+    Node *pre = head;
+    // first get the version number of all the node in the vector called total_v
+    std::vector<int> total_v = getversion(pre);
+    // check if the version that the user want to remove is in the total_v
+    vector<int>::iterator check = find(total_v.begin(), total_v.end(), version);
+    //if the version number is not in the total_v, ask the use to enter another number
+    if (check == total_v.end()){
+        std::cout <<"Please enter a valid version number.\n";
+    }
+    //if the number is valid
+    else{
+        while (pre != NULL){
+            //we set 3 pointers, pointing to the current and forward node
+            Node *cur = pre->next;
+            Node *forward = cur->next;
+            //find the node that the cur's version equals to the the version that the user want to delete
+            if (cur->version == version){
+                // set the previous node's next points to the forward node
+                pre->next = forward;
+                // set the current node's next points to the NULL
+                cur->next = NULL;
+                //delete the current node
+                delete cur;
+                std::cout <<"Version "<<version<<" deleted successfully.\n";
+                break;
+            };
+            // if we haven't found the node, let all the three node move forward onto next node
+            pre = pre->next;
+            cur = cur->next;
+            forward = forward->next;
+        };
+    };
+};
+
+//define a function to delete the whole linked list
+void deleteList(Node *head)
+{
+    //create a pointer pointing to the head
+    Node *pre = head;
+    Node *next = NULL;
+ 
+    while (pre!= NULL)
+    {
+        //let head be the next node
+        next = pre->next;
+        //delete the current node
+        delete pre;
+        //let pre pointing to the next node
+        pre = next;
+    };
+};
+
+void menu(char &choice){
+    //define the variables that we need to use later
+    std::stringstream t;
+    std::ifstream f;  
+    int v;
+    int c1;
+    int c2;
+    int r;
+    std::string keyword;
+
+    // print the menu to the user so that the user can choose
+    std::cout <<"\n\t\t Welcome to the Comp322 file versioning system!\n\n";
+    std::cout <<"To add the content of your file to version control press 'a'\n";
+    std::cout <<"To remove a version press 'r'\n";
+    std::cout <<"To load a version press 'l'\n";
+    std::cout <<"To print to the screen the detailed list of all versions press 'p'\n";
+    std::cout <<"To compare any 2 versions press 'c'\n";
+    std::cout <<"To search versions for a keyword press 's'\n";
+    std::cout <<"To exit press 'e'\n\n";
+    std::cout <<"Enter your choice\n";
+    // store the user's choice in variable choice
+    std::cin >> choice;
+    
+    // if user choose 'a', open the file, and turn the content into string type and use the function add to add
+    if (choice == 'a'){
+        f.open(file);
+        t << f.rdbuf();
+        std::string text = t.str();
+        t.str("");
+        add(text);
+        f.close();
+    }
+    // if user choose 'r', asks the user to enter the version number that he/she wants to remove
+    // then use the function to remove to remove the version
+    else if (choice == 'r'){
+        std::cout <<"Enter the number of the version that you want to delete: \n";
+        std::cin >> r;
+        remove(r);
+    }
+    // if the user choose 'l', asks the user to enter the version number that he/she wants to load
+    // then use the function to load the version
+    else if (choice == 'l'){
+        std::cout <<"Which version would you like to load? ";
+        std::cin >> v;
+        load(v);
+    }
+    // if the user choose 'p', use the function print() to print all the information
+    else if (choice == 'p'){
+        print();
+    }
+    // if the user choose 'c', asks the user to enter the version number that he/she wants to compare
+    // then use the function compare to compare these two versions
+    else if (choice == 'c'){
+        std::cout <<"Please enter the number of the first version to compare: ";
+        std::cin >> c1;
+        std::cout <<"Please enter the number of the second version to compare: ";
+        std::cin >>c2;
+        compare(c1,c2);
+    }
+    // if the user choose 's', asks the user to enter the keyword that he/she wants to search
+    // then use the function search to search for the keywords in all the versions
+    else if(choice == 's'){
+        std::cout <<"Please enter the keyword that you are looking for\n";
+        std::cin >> keyword;
+        search(keyword);
+    }
+    // if the user choose 'e', delete head which we allocate dynamically
+    else if (choice == 'e'){
+        deleteList(head);
+        std::cout <<"Your mission is complete.\n";
+    };
+
+};
+
+int main(){
+    char c;
+    while (true){
+        menu(c);
+        if (c == 'e'){
+            break;
+        }
+    }
+
+}
